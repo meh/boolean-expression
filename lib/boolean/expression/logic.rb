@@ -18,27 +18,26 @@
 #++
 
 class Boolean::Expression::Logic
-  attr_reader :type
+	attr_reader :type
 
-  def initialize (what)
-    @type = case what
-      when '!',  /not/i then :not
-      when '&&', /and/i then :and
-      when '||', /or/i  then :or
-    end
+	def initialize (what)
+		@type = case what
+			when '!',  /not/i then :not
+			when '&&', /and/i then :and
+			when '||', /or/i  then :or
+			else raise SyntaxError, 'invalid logical operator, logical fallacies everywhere'
+		end
+	end
 
-    raise SyntaxError.new('Invalid logical operator, logical fallacies everywhere') unless @type
-  end
+	def evaluate (a, b=nil)
+		case @type
+			when :not then !a
+			when :and then !!(a && b)
+			when :or  then !!(a || b)
+		end
+	end
 
-  def evaluate (a, b=nil)
-    case @type
-      when :not then !a
-      when :and then !!(a && b)
-      when :or  then !!(a || b)
-    end
-  end
-
-  def inspect
-    self.type.to_s.upcase
-  end
+	def inspect
+		type.to_s.upcase
+	end
 end

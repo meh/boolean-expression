@@ -18,7 +18,7 @@
 #++
 
 class Boolean::Expression::Name < String
-  def inspect
-    self.to_s.downcase
-  end
+	def inspect
+		to_s.downcase
+	end
 end

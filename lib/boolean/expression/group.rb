@@ -18,7 +18,7 @@
 #++
 
 class Boolean::Expression::Group < Array
-  def inspect
-    '(' + self.map {|e| e.inspect}.join(' ') + ')'
-  end
+	def inspect
+		'(' + map { |e| e.inspect }.join(' ') + ')'
+	end
 end
