@@ -1,6 +1,6 @@
 Gem::Specification.new {|s|
     s.name         = 'boolean-expression'
-    s.version      = '0.0.2'
+    s.version      = '0.0.2.1'
     s.author       = 'meh.'
     s.email        = 'meh@paranoici.org'
     s.homepage     = 'http://github.com/meh/boolean-expression'
