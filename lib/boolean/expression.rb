@@ -100,6 +100,10 @@ class Boolean::Expression
 
 	private
 		def _check (group)
+			if group.first.is_a?(Logic) && group.first.type != :not
+				raise SyntaxError, "the expression cannot start with AND/OR: #{group}"
+			end
+
 			group.each_with_index {|piece, index|
 				if piece.is_a?(Group)
 					_check(piece)

@@ -30,6 +30,13 @@ describe Boolean::Expression do
 			expect { Boolean::Expression['(lol'] }.should raise_error
 			expect { Boolean::Expression['(lol)'] }.should_not raise_error
 		end
+		
+		it 'raises when it starts with AND/OR' do
+			expect { Boolean::Expression['AND lol'] }.should raise_error
+			expect { Boolean::Expression['OR lol'] }.should raise_error
+
+			expect { Boolean::Expression['NOT lol'] }.should_not raise_error
+		end
 	end
 
 	describe '#evaluate' do
