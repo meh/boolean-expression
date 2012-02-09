@@ -11,6 +11,25 @@ describe Boolean::Expression do
 		it 'parses correctly quoted stuff' do
 			Boolean::Expression['("and" or "not")'].to_s.should == '("and" OR "not")'
 		end
+
+		it 'raises when names/groups are not separated by logic' do
+			expect { Boolean::Expression['lol wut'] }.should raise_error
+			expect { Boolean::Expression['lol && (lol wut)'] }.should raise_error
+			expect { Boolean::Expression['lol && (lol !wut)'] }.should raise_error
+
+			expect { Boolean::Expression['lol && (lol || !wut)'] }.should_not raise_error
+			expect { Boolean::Expression['lol && !(lol && wut)'] }.should_not raise_error
+		end
+
+		it 'raises when a parenthesis is unopened' do
+			expect { Boolean::Expression['lol)'] }.should raise_error
+			expect { Boolean::Expression['(lol)'] }.should_not raise_error
+		end
+
+		it 'raises when a parenthesis is not closed' do
+			expect { Boolean::Expression['(lol'] }.should raise_error
+			expect { Boolean::Expression['(lol)'] }.should_not raise_error
+		end
 	end
 
 	describe '#evaluate' do
@@ -20,6 +39,12 @@ describe Boolean::Expression do
 
 		it 'returns false for (lol && !wut)[:lol, wut]' do
 			Boolean::Expression['(lol && !wut)'][:lol, :wut].should == false
+		end
+	end
+
+	describe '#names' do
+		it 'returns uniq and compacted elements' do
+			Boolean::Expression['tits AND tits AND tits'].names.should == ['tits']
 		end
 	end
 end

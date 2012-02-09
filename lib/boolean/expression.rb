@@ -22,92 +22,101 @@ unless defined?(Boolean)
 end
 
 class Boolean::Expression
-	def self.parse (text)
-		base   = Group.new
-		name   = nil
-		stack  = [base]
-		logic  = nil
-		string = false
-		quoted = false
+	class << self
+		def parse (text)
+			base   = Group.new
+			name   = nil
+			stack  = [base]
+			logic  = nil
+			string = false
+			quoted = false
 
-		text.to_s.chars.each_with_index {|char, index|
-			begin
-				if !string && char == ')' && stack.length == 1
-					raise SyntaxError, 'closing an unopened parenthesis'
-				end
-
-				if !string && (char.match(/\s|\(|\)/) || (!logic && ['|', '&', '!'].member?(char)))
-					if logic || (name && name.match(/^(and|or|not)$/i) && !quoted)
-						stack.last << Logic.new(logic || name)
-						logic       = nil
-						name        = nil
-					elsif name
-						if !stack.last.last.nil? && !stack.last.last.is_a?(Logic)
-							raise SyntaxError, 'you cannot put two names in a row'
-						end
-
-						stack.last << Name.new(name)
-						name        = nil
-						quoted      = false
-					end
-				end
-
-				if name
-					if char == '"'
-						string = false
-					else
-						name << char
-					end
-				elsif logic
-					logic << char
-				else
-					if char == '"'
-						string = true
-						quoted = true
-
-						next
+			text.to_s.chars.each_with_index {|char, index|
+				begin
+					if !string && char == ')' && stack.length == 1
+						raise SyntaxError, 'closing an unopened parenthesis'
 					end
 
-					if string
-						name = char unless name
-					else
-						case char
-							when '(' then stack.push Group.new
-							when ')' then stack[-2] << stack.pop
-							when '|' then logic = '|'
-							when '&' then logic = '&'
-							when '!' then stack.last << Logic.new('!')
-							else          name = char if !char.match(/\s/)
+					if !string && (char.match(/\s|\(|\)/) || (!logic && ['|', '&', '!'].member?(char)))
+						if logic || (name && name.match(/^(and|or|not)$/i) && !quoted)
+							stack.last << Logic.new(logic || name)
+							logic       = nil
+							name        = nil
+						elsif name
+							stack.last << Name.new(name)
+							name        = nil
+							quoted      = false
 						end
 					end
+
+					if name
+						if char == '"'
+							string = false
+						else
+							name << char
+						end
+					elsif logic
+						logic << char
+					else
+						if char == '"'
+							string = true
+							quoted = true
+
+							next
+						end
+
+						if string
+							name = char unless name
+						else
+							case char
+								when '(' then stack.push Group.new
+								when ')' then stack[-2] << stack.pop
+								when '|' then logic = '|'
+								when '&' then logic = '&'
+								when '!' then stack.last << Logic.new('!')
+								else          name = char if !char.match(/\s/)
+							end
+						end
+					end
+				rescue SyntaxError => e
+					raise "#{e.message} near `#{text[index - 4, 8]}` at character #{index}"
 				end
-			rescue SyntaxError => e
-				raise "#{e.message} near `#{text[index - 4, 8]}` at character #{index}"
-			end
-		}
+			}
 
-		raise SyntaxError, 'not all parenthesis are closed' if stack.length != 1
-		
-		raise SyntaxError, 'the expression cannot end with a logic operator' if logic
+			raise SyntaxError, 'not all parenthesis are closed' if stack.length != 1
+			
+			raise SyntaxError, 'the expression cannot end with a logic operator' if logic
 
-		if name
-			if !stack.last.last.nil? && !stack.last.last.is_a?(Logic)
-				raise SyntaxError, 'you cannot put two names in a row'
-			end
+			base << Name.new(name) if name
 
-			base << Name.new(name)
+			base = base.first if base.length == 1 && base.first.is_a?(Group)
+
+			_check(base)
+
+			new(base)
 		end
+		
+		alias [] parse
 
-		base = base.first if base.length == 1 && base.first.is_a?(Group)
+	private
+		def _check (group)
+			group.each_with_index {|piece, index|
+				if piece.is_a?(Group)
+					_check(piece)
+				end
 
-		new(base)
+				next if index - 1 < 0
+
+				if piece.is_a?(Logic) && piece.type == :not && !group[index - 1].is_a?(Logic)
+					raise SyntaxError, "missing AND/OR before a NOT in: #{group}"
+				end
+
+				if (piece.is_a?(Name) || piece.is_a?(Group)) && !group[index - 1].is_a?(Logic)
+					raise SyntaxError, "missing AND/OR in: #{group}"
+				end
+			}
+		end
 	end
-
-	def self.[] (*args)
-		parse(*args)
-	end
-
-	attr_reader :base
 
 	def initialize (base = Group.new)
 		@base = base
@@ -121,8 +130,20 @@ class Boolean::Expression
 
 	alias [] evaluate
 
+	def names
+		_names(@base).compact.uniq
+	end
+
 	def to_s
 		@base.inspect
+	end
+
+	def to_group
+		@base
+	end
+
+	def to_a
+		@base.to_a
 	end
 
 private
@@ -157,6 +178,18 @@ private
 		end
 
 		values.first
+	end
+
+	def _names (group, result = [])
+		group.each {|piece|
+			if piece.is_a?(Name)
+				result.push(piece)
+			elsif piece.is_a?(Group)
+				_names(piece, result)
+			end
+		}
+
+		result
 	end
 end
 
