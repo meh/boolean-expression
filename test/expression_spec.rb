@@ -7,6 +7,10 @@ describe Boolean::Expression do
 		it 'parses correctly (lol && wut || !(wat && omg && nig))' do
 			Boolean::Expression['(lol && wut || !(wat && omg && nig))'].to_s.should == '(lol AND wut OR NOT (wat AND omg AND nig))'
 		end
+
+		it 'parses correctly quoted stuff' do
+			Boolean::Expression['("and" or "not")'].to_s.should == '("and" OR "not")'
+		end
 	end
 
 	describe '#evaluate' do

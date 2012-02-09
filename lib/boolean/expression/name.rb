@@ -19,6 +19,8 @@
 
 class Boolean::Expression::Name < String
 	def inspect
-		to_s.downcase
+		(match(/[\s!&|]/) || %w(and or not).include?(downcase)) ? super : self
 	end
+
+	alias to_s inspect
 end

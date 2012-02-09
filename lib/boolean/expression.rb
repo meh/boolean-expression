@@ -23,39 +23,62 @@ end
 
 class Boolean::Expression
 	def self.parse (text)
-		base  = Group.new
-		name  = nil
-		stack = [base]
-		logic = nil
+		base   = Group.new
+		name   = nil
+		stack  = [base]
+		logic  = nil
+		string = false
+		quoted = false
 
 		text.to_s.chars.each_with_index {|char, index|
 			begin
-				if char == ')' && stack.length == 1
+				if !string && char == ')' && stack.length == 1
 					raise SyntaxError, 'closing an unopened parenthesis'
 				end
 
-				if char.match(/\s|\(|\)/) || (!logic && ['|', '&', '!'].member?(char))
-					if logic || (name && name.match(/(and|or|not)/i))
+				if !string && (char.match(/\s|\(|\)/) || (!logic && ['|', '&', '!'].member?(char)))
+					if logic || (name && name.match(/^(and|or|not)$/i) && !quoted)
 						stack.last << Logic.new(logic || name)
 						logic       = nil
 						name        = nil
 					elsif name
+						if !stack.last.last.nil? && !stack.last.last.is_a?(Logic)
+							raise SyntaxError, 'you cannot put two names in a row'
+						end
+
 						stack.last << Name.new(name)
 						name        = nil
+						quoted      = false
 					end
 				end
 
-				if name || logic
-					name  << char if name
-					logic << char if logic
+				if name
+					if char == '"'
+						string = false
+					else
+						name << char
+					end
+				elsif logic
+					logic << char
 				else
-					case char
-						when '(' then stack.push Group.new
-						when ')' then stack[-2] << stack.pop
-						when '|' then logic = '|'
-						when '&' then logic = '&'
-						when '!' then stack.last << Logic.new('!')
-						else name = char if !char.match(/\s/)
+					if char == '"'
+						string = true
+						quoted = true
+
+						next
+					end
+
+					if string
+						name = char unless name
+					else
+						case char
+							when '(' then stack.push Group.new
+							when ')' then stack[-2] << stack.pop
+							when '|' then logic = '|'
+							when '&' then logic = '&'
+							when '!' then stack.last << Logic.new('!')
+							else          name = char if !char.match(/\s/)
+						end
 					end
 				end
 			rescue SyntaxError => e
@@ -67,7 +90,13 @@ class Boolean::Expression
 		
 		raise SyntaxError, 'the expression cannot end with a logic operator' if logic
 
-		base << Name.new(name) if name
+		if name
+			if !stack.last.last.nil? && !stack.last.last.is_a?(Logic)
+				raise SyntaxError, 'you cannot put two names in a row'
+			end
+
+			base << Name.new(name)
+		end
 
 		base = base.first if base.length == 1 && base.first.is_a?(Group)
 

@@ -37,7 +37,9 @@ class Boolean::Expression::Logic
 		end
 	end
 
-	def inspect
+	def to_s
 		type.to_s.upcase
 	end
+
+	alias inspect to_s
 end
